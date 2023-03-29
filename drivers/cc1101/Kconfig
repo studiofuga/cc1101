@@ -1,0 +1,11 @@
+# Copyright (c) 2021 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+config CC1101
+	bool "Texas Instrument's cc1101 sub ghz transceiver"
+	default y
+	depends on DT_HAS_ZEPHYR_CC1101_ENABLED
+	select GPIO
+	select SPI
+	help
+	  Enable cc1101 transceiver module
