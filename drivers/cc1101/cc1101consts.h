@@ -18,6 +18,7 @@
 #define CC1101_FIFO_SIZE                              64
 
 // CC1101 SPI commands
+#define CC1101_CMD_MASK                               0b00111111
 #define CC1101_CMD_READ                               0b10000000
 #define CC1101_CMD_WRITE                              0b00000000
 #define CC1101_CMD_BURST                              0b01000000
