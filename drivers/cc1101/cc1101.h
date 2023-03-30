@@ -12,6 +12,7 @@
 
 #include "cc1101consts.h"
 
+int cc1101_find_chip(const struct device *dev);
 //int cc1101_reg_read(const struct device *dev, uint8_t reg, uint16_t *val);
 
 

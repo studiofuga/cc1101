@@ -29,5 +29,12 @@ void main(void)
 		return;
 	}
 
-	printk("Device ready");
+
+	uint8_t chipVer = cc1101_find_chip(cs);
+    if (chipVer > 0) {
+        printk("Chip Version: %02x", chipVer);
+    } else {
+        printk("Error reading chip version: %d", chipVer);
+    }
+
 }
