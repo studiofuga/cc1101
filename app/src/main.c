@@ -32,7 +32,21 @@ void main(void)
 
 	uint8_t chipVer = cc1101_find_chip(cs);
     if (chipVer > 0) {
-        printk("Chip Version: %02x", chipVer);
+        printk("Chip Version: %02x ", chipVer);
+        switch (chipVer) {
+        case CC1101_VERSION_CURRENT:
+        	printk("current\n");
+        	break;
+        case CC1101_VERSION_CLONE:
+        	printk("clone\n");
+        	break;
+        case CC1101_VERSION_LEGACY:
+        	printk("legacy\n");
+        	break;
+        default:
+        	printk("unknown/invalid\n");
+        	break;
+        }
     } else {
         printk("Error reading chip version: %d", chipVer);
     }

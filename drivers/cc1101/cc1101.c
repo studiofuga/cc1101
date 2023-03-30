@@ -12,8 +12,6 @@
 
 LOG_MODULE_REGISTER(cc1101);
 
-#define CC1101_GET_CONF(x, cfg) ((struct cc1101_config *)(x->config))->reg_def.cfg
-
 struct cc1101_data {
     const struct device *dev;
     struct gpio_callback gpio_cb;
@@ -33,13 +31,14 @@ static int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint
 
     uint8_t tx_buf[256] = {reg};
 
-printk("txrs: %02x %p %d %p %d", reg, txb, txlen, rxb, rxlen);
-
     if (txb != 0 && txlen > 0)
         memcpy (tx_buf +1, txb, txlen);
 
     struct spi_buf tx_spibuf[1];
     
+    if (rxlen > txlen)
+        txlen = rxlen;
+
     tx_spibuf[0].buf = tx_buf;
     tx_spibuf[0].len = txlen +1;
 
@@ -55,7 +54,6 @@ printk("txrs: %02x %p %d %p %d", reg, txb, txlen, rxb, rxlen);
         const struct spi_buf_set rx_set = { rx_spibuf, 1 };
 
         err = spi_transceive_dt(&config->spi, &tx_set, &rx_set);
-        printk("err: %d\n",err);
 
         if (err == 0) {
             memcpy (rxb, rx_buf +1, rxlen);
@@ -65,6 +63,11 @@ printk("txrs: %02x %p %d %p %d", reg, txb, txlen, rxb, rxlen);
     }
 
     return err;
+}
+
+static int cc1101_strobe(const struct device *dev, uint8_t reg)
+{
+    return cc1101_txrx (dev, reg & (~CC1101_CMD_BURST), NULL, 0, NULL, 0);
 }
 
 static int cc1101_set_reg(const struct device *dev, uint8_t reg, uint8_t data)
@@ -86,7 +89,7 @@ static int cc1101_init(const struct device *dev)
 {
     const struct cc1101_config *config = dev->config;
     struct cc1101_data *data = dev->data;
-    uint16_t id;
+    int err;
 
     /* Get the SPI device */
     if (!device_is_ready(config->spi.bus)) {
@@ -119,15 +122,8 @@ static int cc1101_init(const struct device *dev)
         }
     }
 
-/*
-printk("trying to find chip id\n");
-    uint8_t chipVer = cc1101_find_chip(dev);
-    if (chipVer > 0) {
-        LOG_INF("Chip Version: %02x", chipVer);
-    } else {
-        LOG_ERR("Error reading chip version: %d", chipVer);
-    }
-*/
+    err = cc1101_strobe(dev, CC1101_CMD_RESET);
+
     return 0;
 }
 
@@ -135,7 +131,7 @@ printk("trying to find chip id\n");
 #define CC1101_DEFINE(inst)                                         \
     static struct cc1101_data cc1101_data_##inst;                   \
     static struct cc1101_config cc1101_config_##inst = {              \
-        .spi = SPI_DT_SPEC_INST_GET(inst, SPI_WORD_SET(8), 10),        \
+        .spi = SPI_DT_SPEC_INST_GET(inst, SPI_WORD_SET(8), 150),        \
         .gdo0 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 0), \
         .gdo2 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 1), \
     };                                                              \
