@@ -30,9 +30,13 @@ enum Cc1101SignalDirection {
 };
 
 
+int cc1101_get_reg(const struct device *dev, uint8_t reg, uint8_t *data);
+
 int cc1101_find_chip(const struct device *dev);
 
 int cc1101_set_frequency(const struct device *dev, float freq);
+
+int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen);
 
 
 #endif //DRIVERS_CC1101_H

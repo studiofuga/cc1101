@@ -10,6 +10,8 @@
 
 #include <zephyr/logging/log.h>
 
+#include <zephyr/sys/util.h>
+
 LOG_MODULE_REGISTER(cc1101);
 
 struct cc1101_data {
@@ -32,6 +34,7 @@ struct cc1101_config {
     const struct cc1101_data data;
 };
 
+/* in master mode, spi_transfer returns 0 if ok, <0 if error */
 static int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint8_t txlen, uint8_t *rxb, uint8_t rxlen)
 {
     const struct cc1101_config *config = dev->config;
@@ -71,6 +74,8 @@ static int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint
         err = spi_transceive_dt(&config->spi, &tx_set, NULL);
     }
 
+    if (err < 0)
+        LOG_ERR("spi_transceve_dt error %d", err);
     return err;
 }
 
@@ -81,6 +86,7 @@ static int cc1101_strobe(const struct device *dev, uint8_t reg)
 
 static int cc1101_set_reg(const struct device *dev, uint8_t reg, uint8_t data)
 {
+    LOG_INF("Set Reg %02x = %02x", reg, data);
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_WRITE, &data, 1, NULL, 0);
 }
 
@@ -89,7 +95,7 @@ static int cc1101_set_regs(const struct device *dev, uint8_t reg, uint8_t *value
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_WRITE, values, len, NULL, 0);
 }
 
-static int cc1101_get_reg(const struct device *dev, uint8_t reg, uint8_t *data)
+int cc1101_get_reg(const struct device *dev, uint8_t reg, uint8_t *data)
 {
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_READ, NULL, 0, data, 1);
 }
@@ -260,11 +266,11 @@ int cc1101_set_frequency(const struct device *dev, float freq)
     int err = 0;
 
     err = cc1101_set_reg(dev, CC1101_REG_FREQ2, (FRF & 0xFF0000) >> 16);
-    if (err) return err;
+    if (err < 0) return err;
     err = cc1101_set_reg(dev, CC1101_REG_FREQ1, (FRF & 0x00FF00) >> 8);
-    if (err) return err;
+    if (err < 0) return err;
     err = cc1101_set_reg(dev, CC1101_REG_FREQ0, FRF & 0x0000FF);
-    if (err) return err;
+    if (err < 0) return err;
 
     const struct cc1101_config *config = dev->config;
     struct cc1101_data *data = dev->data;
@@ -332,7 +338,7 @@ int cc1101_set_deviation(const struct device *dev, float freqDev)
     _get_expmant(newFreqDev * 1000.0, 8, 17, 7, &e, &m);
 
     int err = cc1101_set_reg_field(dev, CC1101_REG_DEVIATN, (e << 4), 0b01110000);
-    if (err) return err;
+    if (err < 0) return err;
 
     err = cc1101_set_reg_field(dev, CC1101_REG_DEVIATN, m, 0b00000111);
     return err;
@@ -411,6 +417,69 @@ int cc1101_set_maximum_packet_length(const struct device *dev,uint8_t max)
 {
     return cc1101_set_reg(dev,CC1101_REG_PKTLEN, max);
 }
+
+int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
+{
+    if (packetlen == 0)
+        return 0;
+
+    // check packet length -- in case of Variable Packet length, length must be accounted
+    if(packetlen > CC1101_MAX_PACKET_LENGTH-1) {
+        LOG_ERR("Transmit packet too long");
+        return -EINVAL;
+    }
+
+    _idle(dev);
+
+    const struct cc1101_config *config = dev->config;
+    struct cc1101_data *data = dev->data;
+
+    cc1101_strobe(dev, CC1101_CMD_FLUSH_TX);
+
+    int err;
+    uint8_t dataSent = 0;
+
+    if (data->variable_length) {
+        err = cc1101_set_reg(dev, CC1101_REG_FIFO, packetlen);
+        if (err < 0) return err;
+        dataSent += 1;
+    }
+
+    // We don't handle addresses, in case we should handle this.
+/*
+    uint8_t filter = CC1101_REG_PKTCTRL1, 1, 0);
+    if(filter != CC1101_ADR_CHK_NONE) {
+        err = cc1101_set_reg(dev, CC1101_REG_FIFO, addr);
+        dataSent += 1;
+    }
+*/
+
+    // fill the FIFO.
+    uint8_t initialWrite = Z_MIN((uint8_t)packetlen, (uint8_t)(CC1101_FIFO_SIZE - dataSent));
+    err = cc1101_set_regs(dev, CC1101_REG_FIFO, packet, initialWrite);
+    if (err < 0) return err;
+    dataSent += initialWrite;
+
+    err = cc1101_strobe(dev, CC1101_CMD_TX);
+    if (err < 0) return err;
+
+    while (dataSent < packetlen) {
+        uint8_t bytesInFIFO;
+        err = cc1101_get_reg_field(dev, CC1101_REG_TXBYTES, &bytesInFIFO, 0b01111111);
+
+        if (bytesInFIFO < CC1101_FIFO_SIZE) {
+            uint8_t bytesToWrite = Z_MIN((uint8_t)(CC1101_FIFO_SIZE - bytesInFIFO), (uint8_t)(packetlen - dataSent));
+            err = cc1101_set_regs(dev, CC1101_REG_FIFO, &packet[dataSent], bytesToWrite);
+            if (err < 0) return err;
+            dataSent += bytesToWrite;
+        } else {
+            k_usleep(250);
+        }
+    }
+
+    return dataSent;
+}
+
 
 static int cc1101_init(const struct device *dev)
 {
