@@ -51,4 +51,32 @@ void main(void)
         printk("Error reading chip version: %d", chipVer);
     }
 
+    printk("Registers dump:");
+
+    int err;
+    uint8_t reg, v;
+    for (reg = 0; reg < 0x30; ++reg) {
+    	err = cc1101_get_reg(cs, reg, &v);
+    	if (err) {
+    		printk ("Error: cannot read register %08x, %d\n", reg, v);
+    		return;
+    	}
+
+    	if ((reg % 8) == 0){
+    		k_msleep(1);
+	    	printk("\n%02x: ", reg);	
+	    }
+	    printk ("%02x ", v);
+    }
+
+    printk("\n");
+
+    while (1) {
+   		char buffer[] = "Hello World!";
+    	err = cc1101_tx(cs, buffer, strlen(buffer));
+    	if (err < 0) {
+    		printk("Error transmitting: %d\n", err);
+    	}
+    	k_msleep(1000);
+    }
 }
