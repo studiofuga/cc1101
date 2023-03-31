@@ -3,8 +3,8 @@
  * https://github.com/jgromes/RadioLib
  */
 
-#ifndef DRIVERS_CC1101CONSTS_H
-#define DRIVERS_CC1101CONSTS_H
+#ifndef DRIVERS_CC1101_CONST_H
+#define DRIVERS_CC1101_CONST_H
 
 // CC1101 physical layer properties
 #define CC1101_FREQUENCY_STEP_SIZE                    396.7285156

@@ -10,7 +10,7 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/gpio.h>
 
-#include "cc1101consts.h"
+#include "cc1101_const.h"
 
 enum Cc1101SyncType {
     NoSync = 0, Sync15_16, Sync16_16, Sync30_32,
@@ -38,5 +38,25 @@ int cc1101_set_frequency(const struct device *dev, float freq);
 
 int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen);
 
+
+struct cc1101_data {
+    const struct device *dev;
+    struct gpio_callback gpio_cb;
+
+    float frequency;
+    float bitrate;
+    float power;
+
+    bool variable_length;
+    uint8_t fixed_packet_length;
+
+    enum Cc1101Modulation modulation;
+};
+
+struct cc1101_config {
+    const struct spi_dt_spec spi;
+    const struct gpio_dt_spec gdo0, gdo2;
+    const struct cc1101_data data;
+};
 
 #endif //DRIVERS_CC1101_H
