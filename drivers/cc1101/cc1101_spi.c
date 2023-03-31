@@ -59,7 +59,7 @@ int cc1101_strobe(const struct device *dev, uint8_t reg)
 
 int cc1101_set_reg(const struct device *dev, uint8_t reg, uint8_t data)
 {
-    LOG_INF("Set Reg %02x = %02x", reg, data);
+    LOG_DBG("Set Reg %02x = %02x", reg, data);
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_WRITE, &data, 1, NULL, 0);
 }
 

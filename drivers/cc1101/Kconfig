@@ -4,8 +4,30 @@
 config CC1101
 	bool "Texas Instrument's cc1101 sub ghz transceiver"
 	default y
-	depends on DT_HAS_ZEPHYR_CC1101_ENABLED
+	depends on DT_HAS_TI_CC1101_ENABLED
 	select GPIO
 	select SPI
 	help
 	  Enable cc1101 transceiver module
+
+
+if CC1101
+
+config CC1101_RX_STACK_SIZE
+	int "Driver's internal RX thread stack size"
+	default 800
+	help
+	  This option sets the driver's stack size for its internal RX thread.
+	  The default value should be sufficient, but in case it proves to be
+	  a too little one, this option makes it easy to play with the size.
+
+config CC1101_INIT_PRIO
+	int "CC1101 initialization priority"
+	default 80
+	help
+	  Set the initialization priority number. Do not mess with it unless
+	  you know what you are doing. Beware cc1101 requires gpio and spi to
+	  be ready first (and sometime gpio should be the very first as spi
+	  might need it too). And of course it has to start before the net stack.
+
+endif

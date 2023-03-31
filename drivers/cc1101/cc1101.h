@@ -38,10 +38,27 @@ int cc1101_set_frequency(const struct device *dev, float freq);
 
 int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen);
 
+struct cc1101_event {
+    uint8_t event;
+    uint8_t *rx;
+    uint8_t len;
+};
+
+typedef void (*cc1101_callback_t)(const struct device *, struct cc1101_event *, void *);
+
+int cc1101_add_cb (const struct device *dev, cc1101_callback_t callback, void *user_data);
+
+struct cc1101_cb {
+    cc1101_callback_t callback;
+    void *user_data;
+};
 
 struct cc1101_data {
     const struct device *dev;
-    struct gpio_callback gpio_cb;
+    struct gpio_callback rx_cback;
+    struct gpio_callback tx_cback;
+
+    struct cc1101_cb callback;
 
     float frequency;
     float bitrate;
@@ -51,6 +68,12 @@ struct cc1101_data {
     uint8_t fixed_packet_length;
 
     enum Cc1101Modulation modulation;
+
+    /* RX thread */
+    K_KERNEL_STACK_MEMBER(rx_stack, CONFIG_CC1101_RX_STACK_SIZE);
+    struct k_thread rx_thread;
+    struct k_sem rx_lock;
+    atomic_t rx;
 };
 
 struct cc1101_config {

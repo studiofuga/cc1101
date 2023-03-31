@@ -9,6 +9,7 @@
 #include "cc1101_const.h"
 #include "cc1101_spi.h"
 #include "cc1101_config.h"
+#include "cc1101_txrx.h"
 
 #include <zephyr/logging/log.h>
 
@@ -27,11 +28,38 @@ int cc1101_find_chip(const struct device *dev)
 }
 
 
+static int cc1101_init_intr(const struct device *dev)
+{
+    const struct cc1101_config *config = dev->config;
+    struct cc1101_data *data = dev->data;
+    int err;
+
+    if (config->gdo0.port != 0) {
+        err = gpio_pin_interrupt_configure_dt(&config->gdo0, GPIO_INT_EDGE_TO_ACTIVE);
+        if (err < 0) {
+            LOG_ERR("GDO0 interrupt config failed");
+            return err;
+        }
+
+        gpio_init_callback(&data->rx_cback, _cc1101_rx_handler, BIT(config->gdo0.pin));
+        gpio_add_callback(config->gdo0.port, &data->rx_cback);
+
+        cc1101_enable_intr_rx(dev);
+        cc1101_trigger_rx(dev);
+    }
+
+    return 0;
+}
+
 static int cc1101_init(const struct device *dev)
 {
     const struct cc1101_config *config = dev->config;
     struct cc1101_data *data = dev->data;
     int err;
+
+    atomic_set(&data->rx, 0);
+    k_sem_init(&data->rx_lock, 0, 1);
+
 
     /* Get the SPI device */
     if (!device_is_ready(config->spi.bus)) {
@@ -66,6 +94,12 @@ static int cc1101_init(const struct device *dev)
 
     err = cc1101_strobe(dev, CC1101_CMD_RESET);
 
+    k_thread_create(&data->rx_thread, data->rx_stack,
+            CONFIG_CC1101_RX_STACK_SIZE,
+            (k_thread_entry_t)_cc1101_rx_thread,
+            (void *)dev, NULL, NULL, K_PRIO_COOP(2), 0, K_NO_WAIT);
+    k_thread_name_set(&data->rx_thread, "cc1101_rx");
+
     // configure 
 
     _idle(dev);
@@ -78,9 +112,14 @@ static int cc1101_init(const struct device *dev)
 
 // other defaults here
 
-    cc1101_strobe(dev, CC1101_CMD_FLUSH_RX);
-    cc1101_strobe(dev, CC1101_CMD_FLUSH_TX);
+    cc1101_set_reg_field(dev,CC1101_REG_FSCTRL1, 0x06, 0b00011111);
+    cc1101_set_reg(dev,CC1101_REG_FSCTRL0, 0x05);
 
+    _idle(dev);
+    cc1101_strobe(dev, CC1101_CMD_FLUSH_TX);
+    cc1101_strobe(dev, CC1101_CMD_FLUSH_RX);
+
+    cc1101_init_intr(dev);
 
     return 0;
 }
