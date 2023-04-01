@@ -24,8 +24,11 @@ void rxcallback(const struct device *dev, struct cc1101_event *evt, void *)
 
 void main(void)
 {
+    printk("booting\n");
 	int ret;
 	const struct device *cs;
+
+    k_msleep(1000);
 
 	cs = DEVICE_DT_GET_ANY(ti_cc1101);
 	if(!cs) {
