@@ -256,7 +256,8 @@ int cc1101_set_variable_length_packet(const struct device *dev)
 {
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL0, CC1101_LENGTH_CONFIG_VARIABLE, 0b00000011);
     struct cc1101_data *data = dev->data;
-    data->variable_length = true;
+    data->variable_length = 1;
+    LOG_DBG("Setup Vlen: %d", data->variable_length);
     return 0;
 }
 

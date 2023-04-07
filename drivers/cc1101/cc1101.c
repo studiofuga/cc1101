@@ -59,7 +59,7 @@ static int cc1101_init(const struct device *dev)
 
     atomic_set(&data->rx, 0);
     k_sem_init(&data->rx_lock, 0, 1);
-
+    k_mutex_init (&data->spi_mutex);
 
     /* Get the SPI device */
     if (!device_is_ready(config->spi.bus)) {
@@ -94,12 +94,6 @@ static int cc1101_init(const struct device *dev)
 
     err = cc1101_strobe(dev, CC1101_CMD_RESET);
 
-    k_thread_create(&data->rx_thread, data->rx_stack,
-            CONFIG_CC1101_RX_STACK_SIZE,
-            (k_thread_entry_t)_cc1101_rx_thread,
-            (void *)dev, NULL, NULL, K_PRIO_COOP(2), 0, K_NO_WAIT);
-    k_thread_name_set(&data->rx_thread, "cc1101_rx");
-
     // configure 
 
     _idle(dev);
@@ -111,6 +105,22 @@ static int cc1101_init(const struct device *dev)
     cc1101_set_reg_field(dev,CC1101_REG_FIFOTHR, 0x0d, 0b00001111);
 
 // other defaults here
+    cc1101_set_frequency(dev,868.3);
+    cc1101_set_bitrate(dev,38.383);
+    cc1101_set_deviation(dev,20.63);
+    cc1101_set_bw(dev,101.56);
+    cc1101_set_output_power(dev,10);
+
+    cc1101_set_modulation(dev,GFSK);
+    cc1101_set_sync_type(dev,Sync30_32);
+    cc1101_set_preamble_length(dev,Bytes4);
+    cc1101_set_sync_words(dev,0x2d, 0xc5);
+    cc1101_enable_crc(dev);
+    cc1101_enable_whitening(dev);
+    cc1101_set_variable_length_packet(dev);
+    
+    cc1101_set_reg_field(dev,CC1101_REG_FSCTRL1, 0x06, 0b00011111);
+    cc1101_set_reg(dev,CC1101_REG_FSCTRL0, 0x05);
 
     cc1101_set_reg_field(dev,CC1101_REG_FSCTRL1, 0x06, 0b00011111);
     cc1101_set_reg(dev,CC1101_REG_FSCTRL0, 0x05);
@@ -118,6 +128,12 @@ static int cc1101_init(const struct device *dev)
     _idle(dev);
     cc1101_strobe(dev, CC1101_CMD_FLUSH_TX);
     cc1101_strobe(dev, CC1101_CMD_FLUSH_RX);
+
+    k_thread_create(&data->rx_thread, data->rx_stack,
+            CONFIG_CC1101_RX_STACK_SIZE,
+            (k_thread_entry_t)_cc1101_rx_thread,
+            (void *)dev, NULL, NULL, K_PRIO_COOP(2), 0, K_NO_WAIT);
+    k_thread_name_set(&data->rx_thread, "cc1101_rx");
 
     cc1101_init_intr(dev);
 

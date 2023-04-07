@@ -6,11 +6,14 @@
 
 #include <zephyr/sys/util.h>
 
-LOG_MODULE_REGISTER(cc1101_txrx);
+LOG_MODULE_REGISTER(cc1101_txrx, 4);
 
 
 int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
 {
+    const struct cc1101_config *config = dev->config;
+    struct cc1101_data *data = dev->data;
+
     if (packetlen == 0)
         return 0;
 
@@ -20,19 +23,24 @@ int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
         return -EINVAL;
     }
 
+    int err;
+    err = k_mutex_lock(&data->spi_mutex, K_MSEC(100));
+    if (err) {
+        LOG_ERR("Cannot lock spi mutex");
+        err = -EINVAL;
+        goto fail;
+    }
+
     _idle(dev);
-
-    const struct cc1101_config *config = dev->config;
-    struct cc1101_data *data = dev->data;
-
     cc1101_strobe(dev, CC1101_CMD_FLUSH_TX);
 
-    int err;
     uint8_t dataSent = 0;
 
     if (data->variable_length) {
         err = cc1101_set_reg(dev, CC1101_REG_FIFO, packetlen);
-        if (err < 0) return err;
+        if (err < 0) {
+            goto fail;
+        }
         dataSent += 1;
     }
 
@@ -47,12 +55,14 @@ int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
 
     // fill the FIFO.
     uint8_t initialWrite = Z_MIN((uint8_t)packetlen, (uint8_t)(CC1101_FIFO_SIZE - dataSent));
+
     err = cc1101_set_regs(dev, CC1101_REG_FIFO, packet, initialWrite);
-    if (err < 0) return err;
+    if (err < 0) goto fail;
+
     dataSent += initialWrite;
 
     err = cc1101_strobe(dev, CC1101_CMD_TX);
-    if (err < 0) return err;
+    if (err < 0) goto fail;
 
     while (dataSent < packetlen) {
         uint8_t bytesInFIFO;
@@ -60,15 +70,22 @@ int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
 
         if (bytesInFIFO < CC1101_FIFO_SIZE) {
             uint8_t bytesToWrite = Z_MIN((uint8_t)(CC1101_FIFO_SIZE - bytesInFIFO), (uint8_t)(packetlen - dataSent));
+            LOG_DBG("tx: %d", bytesToWrite);
             err = cc1101_set_regs(dev, CC1101_REG_FIFO, &packet[dataSent], bytesToWrite);
-            if (err < 0) return err;
+            if (err < 0) goto fail;
+
             dataSent += bytesToWrite;
         } else {
             k_usleep(250);
         }
     }
 
+    k_mutex_unlock(&data->spi_mutex);
     return dataSent;
+
+fail:
+    k_mutex_unlock(&data->spi_mutex);
+    return err;
 }
 
 void _cc1101_rx_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
@@ -76,15 +93,11 @@ void _cc1101_rx_handler(const struct device *dev, struct gpio_callback *cb, uint
     struct cc1101_data *data = CONTAINER_OF(cb, struct cc1101_data, rx_cback);
 
     // if not receiving, signal.
-    /*
+
     if (atomic_get(&data->rx) == 1) {
         k_sem_give(&data->rx_lock);
-        atomic_set(&data->rx, 0);
     } else {    // if receiving, flag
-        atomic_set(&data->rx, 1);
-    }*/
-
-            k_sem_give(&data->rx_lock);
+    }
 
 }
 
@@ -97,8 +110,8 @@ static int get_rx_fifo_bytes(const struct device *dev)
 {
     uint8_t nb;
     int err = cc1101_get_reg_field(dev, CC1101_REG_RXBYTES, &nb, 0b01111111);
+
     if (!err){
-        //LOG_INF("rx %d", nb);
         return nb;
     } else {
         LOG_ERR("error rx %d", err);
@@ -115,22 +128,21 @@ void _cc1101_rx_thread(void *arg)
 {
     const struct device *dev = arg;
     struct cc1101_data *data = dev->data;
-    struct net_pkt *pkt;
     uint8_t bytes_avail, pkt_len;
 
     uint8_t rxbuffer[256];
     uint8_t rxptr = 0;
 
     while (1) {
-        pkt = NULL;
-
         k_sem_take(&data->rx_lock, K_FOREVER);
+
+        k_mutex_lock(&data->spi_mutex, K_FOREVER);
 
         // TODO check the status of the fifo. If error, flush it.
 
         bytes_avail = get_rx_fifo_bytes(dev);
 
-        if (data->variable_length) {
+       if (data->variable_length) {
             get_rx_bytes(dev, &pkt_len, 1);
             --bytes_avail;
         } else {
@@ -147,9 +159,12 @@ void _cc1101_rx_thread(void *arg)
             e.rx = rxbuffer;
             e.len = rxptr;
             data->callback.callback(dev, &e, data->callback.user_data);
-            rxptr = 0;
         }
+
+        rxptr = 0;
         cc1101_strobe(dev, CC1101_CMD_RX);
+
+        k_mutex_unlock(&data->spi_mutex);
     }
 }
 
@@ -168,8 +183,8 @@ void cc1101_enable_intr_rx(const struct device *dev)
 int cc1101_add_cb (const struct device *dev, cc1101_callback_t callback, void *user_data)
 {
     struct cc1101_data *data = dev->data;
+
     data->callback.callback = callback;
     data->callback.user_data = user_data;
-
     return 0;
 }

@@ -64,11 +64,13 @@ struct cc1101_data {
     float bitrate;
     float power;
 
-    bool variable_length;
+    uint8_t variable_length;
     uint8_t fixed_packet_length;
 
     enum Cc1101Modulation modulation;
 
+    struct k_mutex spi_mutex;
+    
     /* RX thread */
     K_KERNEL_STACK_MEMBER(rx_stack, CONFIG_CC1101_RX_STACK_SIZE);
     struct k_thread rx_thread;
