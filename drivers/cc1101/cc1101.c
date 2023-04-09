@@ -51,6 +51,29 @@ static int cc1101_init_intr(const struct device *dev)
     return 0;
 }
 
+#define DEFAULT_FOR(field, deflt) \
+    (field != 0? field : deflt)
+
+static int set_defaults(const struct device *dev)
+{
+    struct cc1101_data *data = dev->data;
+
+    cc1101_set_frequency(dev, DEFAULT_FOR(data->frequency, 868000));
+    cc1101_set_bitrate(dev,DEFAULT_FOR(data->bitrate, 4800));
+    
+    cc1101_set_deviation(dev,20.63);
+    cc1101_set_bw(dev,101.56);
+    cc1101_set_output_power(dev,10);
+
+    cc1101_set_modulation(dev,GFSK);
+    cc1101_set_sync_type(dev,Sync30_32);
+    cc1101_set_preamble_length(dev,Bytes4);
+    cc1101_set_sync_words(dev,0x2d, 0xc5);
+    cc1101_enable_crc(dev);
+    cc1101_enable_whitening(dev);
+    cc1101_set_variable_length_packet(dev);
+}
+
 static int cc1101_init(const struct device *dev)
 {
     const struct cc1101_config *config = dev->config;
@@ -104,20 +127,7 @@ static int cc1101_init(const struct device *dev)
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL0, CC1101_CRC_ON | CC1101_LENGTH_CONFIG_VARIABLE, 0b00000111);
     cc1101_set_reg_field(dev,CC1101_REG_FIFOTHR, 0x0d, 0b00001111);
 
-// other defaults here
-    cc1101_set_frequency(dev,868.3);
-    cc1101_set_bitrate(dev,38.383);
-    cc1101_set_deviation(dev,20.63);
-    cc1101_set_bw(dev,101.56);
-    cc1101_set_output_power(dev,10);
-
-    cc1101_set_modulation(dev,GFSK);
-    cc1101_set_sync_type(dev,Sync30_32);
-    cc1101_set_preamble_length(dev,Bytes4);
-    cc1101_set_sync_words(dev,0x2d, 0xc5);
-    cc1101_enable_crc(dev);
-    cc1101_enable_whitening(dev);
-    cc1101_set_variable_length_packet(dev);
+    set_defaults(dev);
     
     cc1101_set_reg_field(dev,CC1101_REG_FSCTRL1, 0x06, 0b00011111);
     cc1101_set_reg(dev,CC1101_REG_FSCTRL0, 0x05);
@@ -142,7 +152,10 @@ static int cc1101_init(const struct device *dev)
 
 
 #define CC1101_DEFINE(inst)                                         \
-    static struct cc1101_data cc1101_data_##inst;                   \
+    static struct cc1101_data cc1101_data_##inst = {                   \
+        .frequency = DT_INST_PROP(inst, frequency),                     \
+        .bitrate = DT_INST_PROP(inst, bitrate),                       \
+    };                                                                  \
     static struct cc1101_config cc1101_config_##inst = {              \
         .spi = SPI_DT_SPEC_INST_GET(inst, SPI_WORD_SET(8), 150),        \
         .gdo0 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 0), \

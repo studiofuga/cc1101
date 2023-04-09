@@ -113,8 +113,10 @@ int cc1101_set_output_power(const struct device *dev, int8_t power)
 }
 
 
-int cc1101_set_frequency(const struct device *dev, float freq)
+int cc1101_set_frequency(const struct device *dev, uint32_t freq_int)
 {
+    float freq = (float)freq_int / 1000.0f;
+
     if (!(((freq > 300.0) && (freq < 348.0)) ||
           ((freq > 387.0) && (freq < 464.0)) ||
           ((freq > 779.0) && (freq < 928.0)))) {
@@ -139,19 +141,21 @@ int cc1101_set_frequency(const struct device *dev, float freq)
     const struct cc1101_config *config = dev->config;
     struct cc1101_data *data = dev->data;
 
-    data->frequency = freq;
+    data->frequency = freq_int;
 
     return cc1101_set_output_power(dev, data->power);
 }
 
-int cc1101_set_bitrate(const struct device *dev, float br)
+int cc1101_set_bitrate(const struct device *dev, uint32_t br_int)
 {
+    float br = (float)br_int;
+
     _idle(dev);
 
     // calculate exponent and mantissa values
     uint8_t e = 0;
     uint8_t m = 0;
-    _get_expmant(br * 1000.0, 256, 28, 14, &e, &m);
+    _get_expmant(br, 256, 28, 14, &e, &m);
 
     // set bit rate value
     int state = cc1101_set_reg_field(dev, CC1101_REG_MDMCFG4, e, 0b00001111);
@@ -161,7 +165,7 @@ int cc1101_set_bitrate(const struct device *dev, float br)
 
     const struct cc1101_config *config = dev->config;
     struct cc1101_data *data = dev->data;
-    data->bitrate = br;
+    data->bitrate = br_int;
 
     return state;
 }
@@ -257,7 +261,6 @@ int cc1101_set_variable_length_packet(const struct device *dev)
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL0, CC1101_LENGTH_CONFIG_VARIABLE, 0b00000011);
     struct cc1101_data *data = dev->data;
     data->variable_length = 1;
-    LOG_DBG("Setup Vlen: %d", data->variable_length);
     return 0;
 }
 

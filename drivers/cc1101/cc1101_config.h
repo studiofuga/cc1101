@@ -4,8 +4,8 @@
 #include "cc1101.h"
 
 int cc1101_set_output_power(const struct device *dev, int8_t power);
-int cc1101_set_frequency(const struct device *dev, float freq);
-int cc1101_set_bitrate(const struct device *dev, float br);
+int cc1101_set_frequency(const struct device *dev, uint32_t freq);
+int cc1101_set_bitrate(const struct device *dev, uint32_t br);
 int cc1101_set_bw(const struct device *dev, float rxBw);
 int cc1101_set_deviation(const struct device *dev, float freqDev);
 int cc1101_set_sync_type(const struct device *dev, enum Cc1101SyncType type);

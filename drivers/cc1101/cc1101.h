@@ -33,8 +33,8 @@ enum Cc1101SignalDirection {
 int cc1101_get_reg(const struct device *dev, uint8_t reg, uint8_t *data);
 
 int cc1101_find_chip(const struct device *dev);
-
-int cc1101_set_frequency(const struct device *dev, float freq);
+int cc1101_set_frequency(const struct device *dev, uint32_t freq);
+int cc1101_set_bitrate(const struct device *dev, uint32_t br);
 
 int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen);
 
@@ -60,7 +60,7 @@ struct cc1101_data {
 
     struct cc1101_cb callback;
 
-    float frequency;
+    uint32_t frequency;
     float bitrate;
     float power;
 

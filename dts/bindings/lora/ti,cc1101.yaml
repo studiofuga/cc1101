@@ -13,3 +13,11 @@ properties:
     required: true
     description: |
       GPIOs connected to the GDO0 and GDO2 pins of the transceiver.
+  frequency:
+    type: int
+    description: |
+      The carrier frequency, in kHz.
+  bitrate:
+    type: int
+    description: |
+      The bitrate in bit per second.
