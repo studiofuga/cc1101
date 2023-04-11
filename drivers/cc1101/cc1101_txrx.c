@@ -81,10 +81,16 @@ int cc1101_tx (const struct device *dev, uint8_t *packet, int packetlen)
     }
 
     k_mutex_unlock(&data->spi_mutex);
+    // we don't return in RX, it will be issued automatically when transmit is completed
+    // because of MCSM1[1..0] = b11 (TXOFF_MODE)
     return dataSent;
 
 fail:
     k_mutex_unlock(&data->spi_mutex);
+    _idle(dev);
+    cc1101_strobe(dev, CC1101_CMD_RX);
+
+    LOG_DBG("tx fail: %d", err);
     return err;
 }
 
@@ -99,11 +105,6 @@ void _cc1101_rx_handler(const struct device *dev, struct gpio_callback *cb, uint
     } else {    // if receiving, flag
     }
 
-}
-
-static int get_status(const struct device *dev)
-{
-    return 0;
 }
 
 static int get_rx_fifo_bytes(const struct device *dev)
@@ -129,41 +130,46 @@ void _cc1101_rx_thread(void *arg)
     const struct device *dev = arg;
     struct cc1101_data *data = dev->data;
     uint8_t bytes_avail, pkt_len;
+    int err;
 
     uint8_t rxbuffer[256];
     uint8_t rxptr = 0;
 
     while (1) {
+        LOG_DBG("wait");
         k_sem_take(&data->rx_lock, K_FOREVER);
 
         k_mutex_lock(&data->spi_mutex, K_FOREVER);
 
         // TODO check the status of the fifo. If error, flush it.
 
-        bytes_avail = get_rx_fifo_bytes(dev);
+//        bytes_avail = 0;
+        err = cc1101_get_reg_field(dev, CC1101_REG_RXBYTES, &bytes_avail, 0b01111111);
 
-       if (data->variable_length) {
-            get_rx_bytes(dev, &pkt_len, 1);
-            --bytes_avail;
-        } else {
-            pkt_len = data->fixed_packet_length;
+        LOG_DBG("bytes avail: %d", bytes_avail);
+        if (bytes_avail > 0){
+                LOG_DBG("bytes avail: %d", bytes_avail);
+               if (data->variable_length) {
+                    get_rx_bytes(dev, &pkt_len, 1);
+                    --bytes_avail;
+                } else {
+                    pkt_len = data->fixed_packet_length;
+                }
+        
+                while ((bytes_avail = get_rx_fifo_bytes(dev))> 0) {
+                    get_rx_bytes(dev, rxbuffer + rxptr, bytes_avail);
+                    rxptr += bytes_avail;
+                }
+        
+                if (data->callback.callback) {
+                    struct cc1101_event e;
+                    e.rx = rxbuffer;
+                    e.len = rxptr;
+                    data->callback.callback(dev, &e, data->callback.user_data);
+                }
+        
+                rxptr = 0;
         }
-
-        while ((bytes_avail = get_rx_fifo_bytes(dev))> 0) {
-            get_rx_bytes(dev, rxbuffer + rxptr, bytes_avail);
-            rxptr += bytes_avail;
-        }
-
-        if (data->callback.callback) {
-            struct cc1101_event e;
-            e.rx = rxbuffer;
-            e.len = rxptr;
-            data->callback.callback(dev, &e, data->callback.user_data);
-        }
-
-        rxptr = 0;
-        cc1101_strobe(dev, CC1101_CMD_RX);
-
         k_mutex_unlock(&data->spi_mutex);
     }
 }

@@ -35,6 +35,8 @@ static int cc1101_init_intr(const struct device *dev)
     int err;
 
     if (config->gdo0.port != 0) {
+        cc1101_enable_intr_rx(dev);
+
         err = gpio_pin_interrupt_configure_dt(&config->gdo0, GPIO_INT_EDGE_TO_ACTIVE);
         if (err < 0) {
             LOG_ERR("GDO0 interrupt config failed");
@@ -44,7 +46,6 @@ static int cc1101_init_intr(const struct device *dev)
         gpio_init_callback(&data->rx_cback, _cc1101_rx_handler, BIT(config->gdo0.pin));
         gpio_add_callback(config->gdo0.port, &data->rx_cback);
 
-        cc1101_enable_intr_rx(dev);
         cc1101_trigger_rx(dev);
     }
 
@@ -72,6 +73,8 @@ static int set_defaults(const struct device *dev)
     cc1101_enable_crc(dev);
     cc1101_enable_whitening(dev);
     cc1101_set_variable_length_packet(dev);
+
+    return 0;
 }
 
 static int cc1101_init(const struct device *dev)
@@ -122,6 +125,8 @@ static int cc1101_init(const struct device *dev)
     _idle(dev);
 
     cc1101_set_reg_field(dev,CC1101_REG_MCSM0, CC1101_FS_AUTOCAL_IDLE_TO_RXTX, 0b00110000);
+    cc1101_set_reg_field(dev,CC1101_REG_MCSM1, CC1101_TXOFF_RX | CC1101_RXOFF_RX, 0b00001111);
+
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL1, CC1101_CRC_AUTOFLUSH_OFF | CC1101_APPEND_STATUS_ON | CC1101_ADR_CHK_NONE, 0b00001111);
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL0, CC1101_WHITE_DATA_OFF | CC1101_PKT_FORMAT_NORMAL, 0b01110000);
     cc1101_set_reg_field(dev,CC1101_REG_PKTCTRL0, CC1101_CRC_ON | CC1101_LENGTH_CONFIG_VARIABLE, 0b00000111);
