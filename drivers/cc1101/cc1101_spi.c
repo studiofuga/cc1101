@@ -11,42 +11,48 @@ LOG_MODULE_REGISTER(cc1101_spi);
 int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint8_t txlen, uint8_t *rxb, uint8_t rxlen)
 {
     const struct cc1101_config *config = dev->config;
-
     int err = 0;
+    uint8_t rxstatus;
 
-    uint8_t tx_buf[256] = {reg};
+    struct spi_buf tx_bufs[2] = {
+        {
+            .buf = &reg,
+            .len = 1,
+        },
+        {
+            .buf = txb,
+            .len = txlen,
+        },
+    };
+    const struct spi_buf_set tx = {
+        .buffers = tx_bufs,
+        .count = ARRAY_SIZE(tx_bufs),
+    };
 
-    if (txb != 0 && txlen > 0)
-        memcpy (tx_buf +1, txb, txlen);
-
-    struct spi_buf tx_spibuf[1];
-    
-    if (rxlen > txlen)
-        txlen = rxlen;
-
-    tx_spibuf[0].buf = tx_buf;
-    tx_spibuf[0].len = txlen +1;
-
-    const struct spi_buf_set tx_set = { tx_spibuf, 1 };
-
-    if (rxlen > 0 && rxb != 0) {
-        uint8_t rx_buf[256] = { 0 };
-        struct spi_buf rx_spibuf[1];
-        
-        rx_spibuf[0].buf = rx_buf;
-        rx_spibuf[0].len = rxlen + 1;
-
-        const struct spi_buf_set rx_set = { rx_spibuf, 1 };
-
-        err = spi_transceive_dt(&config->spi, &tx_set, &rx_set);
-
-        if (err == 0) {
-            memcpy (rxb, rx_buf +1, rxlen);
-        }
-    } else {
-        err = spi_transceive_dt(&config->spi, &tx_set, NULL);
+    if (txlen == 0) {
+        tx_bufs[1].buf = rxb;
+        tx_bufs[1].len = rxlen;
     }
 
+    struct spi_buf rx_bufs[2] = {
+        {
+            .buf = &rxstatus,
+            .len = 1,
+        },
+        {
+            .buf = rxb,
+            .len = rxlen,
+        },
+    };
+    const struct spi_buf_set rx = {
+        .buffers = rx_bufs,
+        .count = ARRAY_SIZE(rx_bufs),
+    };
+
+    gpio_pin_set_dt(&config->ncs, 0);
+    err = spi_transceive_dt(&config->spi, &tx, &rx);
+    gpio_pin_set_dt(&config->ncs, 1);
+        
     if (err < 0)
         LOG_ERR("spi_transceve_dt error %d", err);
     return err;

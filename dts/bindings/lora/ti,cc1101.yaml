@@ -13,6 +13,11 @@ properties:
     required: true
     description: |
       GPIOs connected to the GDO0 and GDO2 pins of the transceiver.
+  cs_gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected nCS
   frequency:
     type: int
     description: |

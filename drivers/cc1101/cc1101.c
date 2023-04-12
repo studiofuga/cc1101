@@ -93,6 +93,17 @@ static int cc1101_init(const struct device *dev)
         return -ENODEV;
     }
 
+    if (!gpio_is_ready_dt(&config->ncs)) {
+        LOG_ERR("nCS device is not ready");
+        return -ENODEV;
+    }
+
+    if (gpio_pin_configure_dt(&config->ncs, GPIO_OUTPUT) < 0) {
+        LOG_ERR("nCS configuration invalid");
+        return -ENODEV;        
+    }
+
+    gpio_pin_set_dt(&config->ncs, 1);
 
     if (config->gdo0.port != 0) {
         if (!gpio_is_ready_dt(&config->gdo0)) {
@@ -165,6 +176,7 @@ static int cc1101_init(const struct device *dev)
         .spi = SPI_DT_SPEC_INST_GET(inst, SPI_WORD_SET(8), 150),        \
         .gdo0 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 0), \
         .gdo2 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 1), \
+        .ncs = GPIO_DT_SPEC_INST_GET(inst, cs_gpios), \
     };                                                              \
     DEVICE_DT_INST_DEFINE(inst, cc1101_init, NULL,     \
                   &cc1101_data_##inst, &cc1101_config_##inst, POST_KERNEL,  \
