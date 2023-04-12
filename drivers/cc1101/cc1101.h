@@ -56,12 +56,11 @@ struct cc1101_cb {
 struct cc1101_data {
     const struct device *dev;
     struct gpio_callback rx_cback;
-    struct gpio_callback tx_cback;
 
     struct cc1101_cb callback;
 
     uint32_t frequency;
-    float bitrate;
+    uint32_t bitrate;
     float power;
 
     uint8_t variable_length;
@@ -76,6 +75,8 @@ struct cc1101_data {
     struct k_thread rx_thread;
     struct k_sem rx_lock;
     atomic_t rx;
+
+    atomic_t irqcount;
 };
 
 struct cc1101_config {

@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(main);
 
 void rxcallback(const struct device *dev, struct cc1101_event *evt, void *)
 {
-    printk("Recv: %d", evt->len);
+    printk("Recv: %d ", evt->len);
     for (int i = 0; i < evt->len; ++i) {
         printk ("%02x ", evt->rx[i]);
     }

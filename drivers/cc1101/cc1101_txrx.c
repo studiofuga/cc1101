@@ -101,10 +101,17 @@ void _cc1101_rx_handler(const struct device *dev, struct gpio_callback *cb, uint
     // if not receiving, signal.
 
     if (atomic_get(&data->rx) == 1) {
+        atomic_inc(&data->irqcount);
         k_sem_give(&data->rx_lock);
     } else {    // if receiving, flag
     }
 
+}
+
+int irqcount(const struct device *dev)
+{
+        struct cc1101_data *data = dev->data;
+        return atomic_get(&data->irqcount);
 }
 
 static int get_rx_fifo_bytes(const struct device *dev)
@@ -122,7 +129,7 @@ static int get_rx_fifo_bytes(const struct device *dev)
 
 static int get_rx_bytes(const struct device *dev, uint8_t *byte, uint8_t n) 
 {
-    return cc1101_set_regs (dev, CC1101_REG_FIFO, byte, n);
+    return cc1101_get_regs (dev, CC1101_REG_FIFO, byte, n);
 }
 
 void _cc1101_rx_thread(void *arg)
@@ -136,38 +143,44 @@ void _cc1101_rx_thread(void *arg)
     uint8_t rxptr = 0;
 
     while (1) {
-        LOG_DBG("wait");
-        k_sem_take(&data->rx_lock, K_FOREVER);
+        rxptr = 0;
+        err = k_sem_take(&data->rx_lock, K_FOREVER);
+        if (err != 0) {
+            LOG_ERR("k_sem_take: %d", err);
+            continue;
+        }
 
-        k_mutex_lock(&data->spi_mutex, K_FOREVER);
+        err = k_mutex_lock(&data->spi_mutex, K_MSEC(100));
+        if (err) {
+            LOG_ERR("Cannot lock spi mutex");
+            err = -EINVAL;
+            continue;
+        }
 
         // TODO check the status of the fifo. If error, flush it.
 
-//        bytes_avail = 0;
         err = cc1101_get_reg_field(dev, CC1101_REG_RXBYTES, &bytes_avail, 0b01111111);
 
-        LOG_DBG("bytes avail: %d", bytes_avail);
         if (bytes_avail > 0){
-                LOG_DBG("bytes avail: %d", bytes_avail);
                if (data->variable_length) {
                     get_rx_bytes(dev, &pkt_len, 1);
                     --bytes_avail;
                 } else {
                     pkt_len = data->fixed_packet_length;
                 }
-        
+
                 while ((bytes_avail = get_rx_fifo_bytes(dev))> 0) {
-                    get_rx_bytes(dev, rxbuffer + rxptr, bytes_avail);
+                    get_rx_bytes(dev, &rxbuffer[rxptr], bytes_avail);
                     rxptr += bytes_avail;
                 }
-        
+
                 if (data->callback.callback) {
                     struct cc1101_event e;
                     e.rx = rxbuffer;
                     e.len = rxptr;
                     data->callback.callback(dev, &e, data->callback.user_data);
+                    
                 }
-        
                 rxptr = 0;
         }
         k_mutex_unlock(&data->spi_mutex);
@@ -184,6 +197,7 @@ void cc1101_trigger_rx(const struct device *dev)
 void cc1101_enable_intr_rx(const struct device *dev) 
 {
     cc1101_set_reg(dev, CC1101_REG_IOCFG0, CC1101_GDOX_SYNC_WORD_SENT_OR_RECEIVED);
+    cc1101_set_reg(dev, CC1101_REG_IOCFG2, CC1101_GDOX_RX_SYMBOL_TICK);
 }
 
 int cc1101_add_cb (const struct device *dev, cc1101_callback_t callback, void *user_data)

@@ -5,7 +5,7 @@
 
 #include <zephyr/sys/util.h>
 
-LOG_MODULE_REGISTER(cc1101_spi);
+LOG_MODULE_REGISTER(cc1101_spi, 4);
 
 /* in master mode, spi_transfer returns 0 if ok, <0 if error */
 int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint8_t txlen, uint8_t *rxb, uint8_t rxlen)
@@ -65,7 +65,6 @@ int cc1101_strobe(const struct device *dev, uint8_t reg)
 
 int cc1101_set_reg(const struct device *dev, uint8_t reg, uint8_t data)
 {
-    LOG_DBG("Set Reg %02x = %02x", reg, data);
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_WRITE, &data, 1, NULL, 0);
 }
 
@@ -77,6 +76,11 @@ int cc1101_set_regs(const struct device *dev, uint8_t reg, uint8_t *values, uint
 int cc1101_get_reg(const struct device *dev, uint8_t reg, uint8_t *data)
 {
     return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_READ, NULL, 0, data, 1);
+}
+
+int cc1101_get_regs(const struct device *dev, uint8_t reg, uint8_t *values, uint8_t len)
+{
+    return cc1101_txrx (dev, (reg & CC1101_CMD_MASK) | CC1101_CMD_BURST | CC1101_CMD_READ, NULL, 0, values, len);
 }
 
 int cc1101_set_reg_field (const struct device *dev, uint8_t reg, uint8_t data, uint8_t mask)

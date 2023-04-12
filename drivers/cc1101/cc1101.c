@@ -83,7 +83,8 @@ static int cc1101_init(const struct device *dev)
     struct cc1101_data *data = dev->data;
     int err;
 
-    atomic_set(&data->rx, 0);
+    atomic_set(&data->rx, 1);
+    atomic_set(&data->irqcount, 0);
     k_sem_init(&data->rx_lock, 0, 1);
     k_mutex_init (&data->spi_mutex);
 
