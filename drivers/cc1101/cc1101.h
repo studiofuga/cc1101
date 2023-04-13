@@ -75,8 +75,6 @@ struct cc1101_data {
     struct k_thread rx_thread;
     struct k_sem rx_lock;
     atomic_t rx;
-
-    atomic_t irqcount;
 };
 
 struct cc1101_config {

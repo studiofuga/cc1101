@@ -101,17 +101,10 @@ void _cc1101_rx_handler(const struct device *dev, struct gpio_callback *cb, uint
     // if not receiving, signal.
 
     if (atomic_get(&data->rx) == 1) {
-        atomic_inc(&data->irqcount);
         k_sem_give(&data->rx_lock);
     } else {    // if receiving, flag
     }
 
-}
-
-int irqcount(const struct device *dev)
-{
-        struct cc1101_data *data = dev->data;
-        return atomic_get(&data->irqcount);
 }
 
 static int get_rx_fifo_bytes(const struct device *dev)
