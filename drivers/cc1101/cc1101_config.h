@@ -15,5 +15,34 @@ int cc1101_enable_crc(const struct device *dev);
 int cc1101_enable_whitening(const struct device *dev);
 int cc1101_set_maximum_packet_length(const struct device *dev,uint8_t max);
 
+struct cc1101_data {
+    const struct device *dev;
+    struct gpio_callback rx_cback;
+
+    struct cc1101_cb callback;
+
+    uint32_t frequency;
+    uint32_t bitrate;
+    float power;
+
+    uint8_t variable_length;
+    uint8_t fixed_packet_length;
+
+    enum Cc1101Modulation modulation;
+
+    struct k_mutex spi_mutex;
+    
+    /* RX thread */
+    K_KERNEL_STACK_MEMBER(rx_stack, CONFIG_CC1101_RX_STACK_SIZE);
+    struct k_thread rx_thread;
+    struct k_sem rx_lock;
+    atomic_t rx;
+};
+
+struct cc1101_config {
+    const struct spi_dt_spec spi;
+    const struct gpio_dt_spec gdo0, gdo2, ncs;
+    const struct cc1101_data data;
+};
 
 #endif 

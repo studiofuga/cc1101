@@ -4,12 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define DT_DRV_COMPAT ti_cc1101
+
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/spi.h>
 #include <zephyr/logging/log.h>
 
 #include "cc1101.h"
+
+#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
+#error"cc1101 series coder is not defined in DTS"
+#endif
 
 LOG_MODULE_REGISTER(main);
 
@@ -86,11 +92,12 @@ void main(void)
     printk("\n");
 
     while (1) {
+        /*
    		char buffer[] = "Hello World!";
     	err = cc1101_tx(cs, buffer, strlen(buffer));
     	if (err < 0) {
     		printk("Error transmitting: %d\n", err);
-    	}
+    	}*/
     	k_msleep(1000);
     }
 }

@@ -1,7 +1,7 @@
 # Copyright (c) 2018, Linaro Limited
 # SPDX-License-Identifier: Apache-2.0
 
-description: Texas Instruments CC1101 802.15.4 wireless transceiver
+description: Texas Instruments CC1101 wireless transceiver
 
 compatible: "ti,cc1101"
 
