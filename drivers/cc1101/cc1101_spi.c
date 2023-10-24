@@ -49,9 +49,7 @@ int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint8_t txl
         .count = ARRAY_SIZE(rx_bufs),
     };
 
-    gpio_pin_set_dt(&config->ncs, 0);
     err = spi_transceive_dt(&config->spi, &tx, &rx);
-    gpio_pin_set_dt(&config->ncs, 1);
         
     if (err < 0)
         LOG_ERR("spi_transceve_dt error %d", err);

@@ -93,18 +93,6 @@ static int cc1101_init(const struct device *dev)
         return -ENODEV;
     }
 
-    if (!gpio_is_ready_dt(&config->ncs)) {
-        LOG_ERR("nCS device is not ready");
-        return -ENODEV;
-    }
-
-    if (gpio_pin_configure_dt(&config->ncs, GPIO_OUTPUT) < 0) {
-        LOG_ERR("nCS configuration invalid");
-        return -ENODEV;        
-    }
-
-    gpio_pin_set_dt(&config->ncs, 1);
-
     if (config->gdo0.port != 0) {
         if (!gpio_is_ready_dt(&config->gdo0)) {
             LOG_ERR("GDO0 device is not ready");
