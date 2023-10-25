@@ -10,7 +10,7 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/gpio.h>
 
-#include "cc1101_const.h"
+#include <app/drivers/cc1101_const.h>
 
 enum Cc1101SyncType {
     NoSync = 0, Sync15_16, Sync16_16, Sync30_32,

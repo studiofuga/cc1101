@@ -11,7 +11,7 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/logging/log.h>
 
-#include "cc1101.h"
+#include <app/drivers/cc1101.h>
 
 #if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
 #error"cc1101 series coder is not defined in DTS"

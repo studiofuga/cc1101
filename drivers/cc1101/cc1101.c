@@ -5,8 +5,8 @@
 
 #define DT_DRV_COMPAT ti_cc1101
 
-#include "cc1101.h"
-#include "cc1101_const.h"
+#include <app/drivers/cc1101.h>
+#include <app/drivers/cc1101_const.h>
 #include "cc1101_spi.h"
 #include "cc1101_config.h"
 #include "cc1101_txrx.h"
@@ -164,7 +164,6 @@ static int cc1101_init(const struct device *dev)
         .spi = SPI_DT_SPEC_INST_GET(inst, SPI_WORD_SET(8), 150),        \
         .gdo0 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 0), \
         .gdo2 = GPIO_DT_SPEC_INST_GET_BY_IDX(inst, int_gpios, 1), \
-        .ncs = GPIO_DT_SPEC_INST_GET(inst, cs_gpios), \
     };                                                              \
     DEVICE_DT_INST_DEFINE(inst, cc1101_init, NULL,     \
                   &cc1101_data_##inst, &cc1101_config_##inst, POST_KERNEL,  \

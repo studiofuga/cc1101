@@ -1,7 +1,7 @@
 #ifndef DRIVERS_CC1101_SPI_H
 #define DRIVERS_CC1101_SPI_H
 
-#include "cc1101.h"
+#include <app/drivers/cc1101.h>
 
 int cc1101_txrx(const struct device *dev, uint8_t reg, uint8_t *txb, uint8_t txlen, uint8_t *rxb, uint8_t rxlen);
 int cc1101_strobe(const struct device *dev, uint8_t reg);

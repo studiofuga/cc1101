@@ -1,7 +1,10 @@
 #ifndef DRIVERS_CC1101_CONFIG_H
 #define DRIVERS_CC1101_CONFIG_H
 
-#include "cc1101.h"
+#include <app/drivers/cc1101.h>
+
+#include <zephyr/device.h>
+#include <zephyr/kernel.h>
 
 int cc1101_set_output_power(const struct device *dev, int8_t power);
 int cc1101_set_bw(const struct device *dev, float rxBw);

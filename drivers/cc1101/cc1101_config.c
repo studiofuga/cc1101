@@ -1,5 +1,5 @@
 #include "cc1101_config.h"
-#include "cc1101_const.h"
+#include <app/drivers/cc1101_const.h>
 #include "cc1101_spi.h"
 
 #include <zephyr/logging/log.h>
