@@ -28,25 +28,24 @@ void rxcallback(const struct device *dev, struct cc1101_event *evt, void *)
     printk("\n");
 }
 
-void main(void)
+int main(void)
 {
     printk("booting\n");
 	int ret;
 	const struct device *cs;
 
-    k_msleep(1000);
+    k_msleep(1500);
 
 	cs = DEVICE_DT_GET_ANY(ti_cc1101);
 	if(!cs) {
 		printk("cc1101 not in devicetree\n");
-		return;		
+		return -1;		
 	}
 
 	if (!device_is_ready(cs)) {
 		printk("cc1101 device is not ready\n");
-		return;
+		return -1;
 	}
-
 
 	uint8_t chipVer = cc1101_find_chip(cs);
     if (chipVer > 0) {
@@ -69,9 +68,11 @@ void main(void)
         printk("Error reading chip version: %d", chipVer);
     }
 
-    cc1101_add_cb(cs, rxcallback, NULL);
+
+   cc1101_add_cb(cs, rxcallback, NULL);
 
     printk("Registers dump:");
+
 
     int err;
     uint8_t reg, v;
@@ -79,7 +80,7 @@ void main(void)
     	err = cc1101_get_reg(cs, reg, &v);
     	if (err) {
     		printk ("Error: cannot read register %08x, %d\n", reg, v);
-    		return;
+    		return -1;
     	}
 
     	if ((reg % 8) == 0){
@@ -100,4 +101,6 @@ void main(void)
     	}*/
     	k_msleep(1000);
     }
+
+    return 0;
 }

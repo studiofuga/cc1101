@@ -44,7 +44,7 @@ struct cc1101_data {
 
 struct cc1101_config {
     const struct spi_dt_spec spi;
-    const struct gpio_dt_spec gdo0, gdo2;
+    const struct gpio_dt_spec gdo0, gdo2, ncs;
     const struct cc1101_data data;
 };
 
