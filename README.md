@@ -6,7 +6,7 @@ This project implements a Zephyr OS driver for use of Texas Instrument's cc1101 
 
 The project has been structured as an out-of-tree driver, and for this reason includes both the driver itself and a sample application.
 
-It has been structured following the example application from zephir-RTOS project that can be found [here](https://github.com/zephyrproject-rtos/example-application).
+It has been structured following the example application from zephyr-RTOS project that can be found [here](https://github.com/zephyrproject-rtos/example-application).
 
 To initialize the workspace, simply clone the repo using west, then update the zephyr tree:
 
